@@ -1,6 +1,7 @@
 from random import choice
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
-from datacenter.models import Chastisement, Commendation, Lesson, Mark, Schoolkid, Subject
+from datacenter.models import Chastisement, Commendation, Lesson, Mark,\
+    Schoolkid
 
 
 encouragements = [
@@ -45,33 +46,32 @@ def fix_marks(schoolkid):
 
 
 def remove_chastisements(schoolkid):
-    schoolkid_chastisements = Chastisement.objects.filter(schoolkid=schoolkid)
-    for schoolkid_chastisement in schoolkid_chastisements:
-        schoolkid_chastisement.delete()
+    Chastisement.objects.filter(schoolkid=schoolkid).delete()
 
 
 def create_commendation(schoolkid_name, subject_title):
     try:
-        schoolkid = Schoolkid.objects.filter(full_name__contains=schoolkid_name).get()
+        schoolkid = Schoolkid.objects.get(full_name__contains=schoolkid_name)
     except ObjectDoesNotExist:
-        exit("Ученик с таким именем не найден. Проверьте орфографию.")
+        exit('Ученик с таким именем не найден. Проверьте орфографию.')
     except MultipleObjectsReturned:
-        exit("Найдено несколько учеников по критерию поиска. Уточните имя/фамилию ученика.")
-    try:
-        schoolkid_subject_lessons = Lesson.objects.filter(year_of_study=schoolkid.year_of_study,
-                                                          group_letter=schoolkid.group_letter,
-                                                          subject__title=subject_title)
-        schoolkid_subject_lessons.get()
-    except ObjectDoesNotExist:
-        exit("Не найдено ни одного занятия по заданному предмету. Проверьте орфографию написания предмета.")
-    except MultipleObjectsReturned:
-        pass
+        exit("""Найдено несколько учеников по критерию поиска.
+        Уточните имя/фамилию ученика.""")
+    schoolkid_subject_lessons = Lesson.objects.filter(
+            year_of_study=schoolkid.year_of_study,
+            group_letter=schoolkid.group_letter,
+            subject__title=subject_title
+    )
     lesson = schoolkid_subject_lessons.order_by('?').first()
-    Commendation.objects.create(text=choice(encouragements), schoolkid=schoolkid, teacher=lesson.teacher,
-                                subject=lesson.subject, created=lesson.date)
 
+    if not lesson:
+        exit("""Не найдено ни одного занятия по заданному предмету.
+        Проверьте орфографию написания предмета.""")
 
-
-
-
-
+    Commendation.objects.create(
+        text=choice(encouragements),
+        schoolkid=schoolkid,
+        teacher=lesson.teacher,
+        subject=lesson.subject,
+        created=lesson.date
+    )
